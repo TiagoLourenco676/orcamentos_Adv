@@ -245,6 +245,10 @@
         <label>Dados Bancários / PIX</label>
         <input type="text" id="in-cond-banco" placeholder="Banco X - Ag: 0000 CC: 00000-0 | PIX" oninput="update()">
     </div>
+    <div class="form-group" style="margin-bottom: 8px;">
+        <label>Prazo de Execução dos Ensaios</label>
+        <input type="text" id="in-prazo-exec" value="15 dias úteis" oninput="update()">
+    </div>
     <div class="form-group">
         <label>Desconto Total (%)</label>
         <input type="number" id="in-desconto" value="0" min="0" max="100" step="0.1" oninput="update()">
@@ -350,7 +354,7 @@
         <div class="section-title">3. PRAZOS, VALIDADE E CONDIÇÕES GERAIS</div>
         <div class="term-text">• <strong>Prazos de Pagamento:</strong> Começam a contar da data de entrega do relatório de Ensaio. Caso haja mais de um relatório, considera-se a data do primeiro enviado.</div>
         <div class="term-text">• <strong>Cancelamento:</strong> Havendo cancelamento após o início, os valores relativos aos ensaios já realizados deverão ser quitados pelo cliente.</div>
-        <div class="term-text">• <strong>Prazo de Execução:</strong> Estimado em 15 dias úteis a partir do recebimento das amostras físicas adequadas e do aceite desta proposta.</div>
+        <div class="term-text">• <strong>Prazo de Execução:</strong> Estimado em <strong id="out-prazo-exec"></strong> a partir do recebimento das amostras físicas adequadas e do aceite desta proposta.</div>
         <div class="term-text">• <strong>Validade da Proposta:</strong> 20 dias úteis após a data de sua emissão.</div>
         <div class="term-text">• <strong>Retenção de Amostras:</strong> As amostras ensaiadas serão mantidas por 60 dias após a finalização. A partir da retirada ou descarte, esgota-se a possibilidade de contestação ou repetição dos ensaios.</div>
 
@@ -517,7 +521,7 @@
     }
 
     function update() {
-        const idsTextos = ['os', 'rem-empresa', 'rem-cnpj', 'rem-tel', 'rem-end', 'rem-nome', 'rem-cargo', 'cli-empresa', 'cli-cnpj', 'cli-tel', 'cli-end', 'cli-nome', 'cli-email', 'cond-prazo', 'cond-forma', 'cond-banco'];
+        const idsTextos = ['os', 'rem-empresa', 'rem-cnpj', 'rem-tel', 'rem-end', 'rem-nome', 'rem-cargo', 'cli-empresa', 'cli-cnpj', 'cli-tel', 'cli-end', 'cli-nome', 'cli-email', 'cond-prazo', 'cond-forma', 'cond-banco', 'prazo-exec'];
         idsTextos.forEach(id => {
             const el = document.getElementById(`out-${id}`);
             if(el) el.innerText = document.getElementById(`in-${id}`).value || '-';
