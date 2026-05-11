@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerador de Orçamento - Advanced Labs</title>
+    <style>
+        :root {
+            --primary: #1e3a8a;
+            --bg: #f3f4f6;
+            --border: #d1d5db;
+        }
+
+        body {
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            background-color: var(--bg);
+            margin: 0;
+            padding: 15px;
+            display: flex;
+            gap: 15px;
+            height: 100vh;
+            box-sizing: border-box;
+        }
+
+        /* Barra Lateral de Edição */
+        .sidebar {
+            width: 480px;
+            background: #fff;
+            padding: 20px;
+            border-radius: 6px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            overflow-y: auto;
+            flex-shrink: 0;
+        }
+
+        h2 { font-size: 16px; margin-top: 0; color: #111; }
+        h3 {
+            font-size: 13px;
+            color: #fff;
+            background: var(--primary);
+            padding: 6px 10px;
+            border-radius: 4px;
+            margin: 15px 0 10px 0;
+            text-transform: uppercase;
+        }
+
+        .form-row { display: flex; gap: 10px; margin-bottom: 8px; }
+        .form-group { flex: 1; display: flex; flex-direction: column; }
+        .form-group.full { flex: 100%; }
+        
+        label { font-size: 11px; font-weight: bold; margin-bottom: 3px; color: #374151; }
+        input[type="text"], input[type="number"], input[type="date"], input[type="file"] {
+            padding: 6px;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            font-size: 12px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        /* Lista de Ensaios */
+        .ensaio-group-title { font-size: 12px; font-weight: bold; color: var(--primary); margin-bottom: 5px; border-bottom: 1px solid var(--border); padding-bottom: 3px; margin-top: 15px;}
+        
+        .ensaio-item {
+            border: 1px solid #e5e7eb;
+            padding: 8px;
+            margin-bottom: 6px;
+            border-radius: 4px;
+            background: #f9fafb;
+            transition: all 0.2s;
+        }
+        
+        .ensaio-item.checked {
+            border-color: var(--primary);
+            background: #eff6ff;
+        }
+
+        .ensaio-header {
+            display: flex;
+            align-items: flex-start;
+            gap: 6px;
+        }
+
+        .ensaio-header input[type="checkbox"] { margin-top: 2px; cursor: pointer; }
+        .ensaio-header label { font-size: 11px; font-weight: bold; margin: 0; cursor: pointer; line-height: 1.2; color: #374151; flex: 1;}
+        .ensaio-header input[type="text"].custom-name { flex: 1; padding: 4px; font-size: 11px; margin-top: -3px; }
+
+        .ensaio-inputs {
+            display: grid;
+            gap: 5px;
+            margin-top: 8px;
+        }
+
+        .btn {
+            color: white;
+            border: none;
+            padding: 10px;
+            font-size: 13px;
+            font-weight: bold;
+            border-radius: 4px;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 10px;
+        }
+        .btn-add { background: #059669; }
+        .btn-add:hover { background: #047857; }
+        .btn-print { background: var(--primary); margin-top: 20px; padding: 14px; font-size: 15px;}
+        .btn-print:hover { background: #1e40af; }
+        .btn-remove { background: #ef4444; padding: 2px 6px; font-size: 10px; width: auto; margin: 0; margin-left: auto; }
+
+        /* Área do PDF (Folha A4) */
+        .preview-container {
+            flex-grow: 1;
+            display: flex;
+            justify-content: center;
+            overflow-y: auto;
+            background: #525659;
+            padding: 20px;
+            border-radius: 6px;
+        }
+
+        .a4-sheet {
+            width: 210mm;
+            min-height: 297mm;
+            background: white;
+            padding: 12mm 15mm;
+            box-shadow: 0 0 10px rgba(0,0,0,0.5);
+            font-family: Arial, sans-serif;
+            font-size: 9pt;
+            color: #000;
+            box-sizing: border-box;
+        }
+
+        .doc-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid var(--primary);
+            padding-bottom: 10px;
+            margin-bottom: 15px;
+        }
+
+        .doc-logo { width: 160px; }
+        .doc-logo.right { text-align: right; }
+        .doc-logo img { max-width: 100%; max-height: 55px; object-fit: contain; }
+        .doc-meta { text-align: center; flex: 1; line-height: 1.4; }
+
+        /* Tabelas Profissionais */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 12px;
+            table-layout: fixed;
+        }
+        th, td {
+            border: 1px solid #000;
+            padding: 4px 6px;
+            text-align: left;
+            vertical-align: middle;
+            word-wrap: break-word;
+        }
+        th { background: #f0f0f0; font-weight: bold; }
+        
+        .text-center { text-align: center; }
+        .text-right { text-align: right; }
+        .section-title { font-weight: bold; font-size: 10pt; margin: 15px 0 5px 0; color: var(--primary); }
+        .term-text { font-size: 8pt; text-align: justify; margin-bottom: 4px; line-height: 1.2; }
+
+        @media print {
+            body { background: white; padding: 0; display: block; height: auto; }
+            .sidebar { display: none; }
+            .preview-container { background: none; padding: 0; display: block; overflow: visible; }
+            .a4-sheet { box-shadow: none; margin: 0; padding: 0; width: 100%; min-height: auto; }
+            @page { size: A4; margin: 12mm; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="sidebar">
+    <h2>Configuração de Orçamento</h2>
+    
+    <div class="form-row" style="margin-bottom: 10px;">
+        <div class="form-group">
+            <label>Logo do Laboratório</label>
+            <input type="file" id="in-logo-lab" accept="image/*">
+        </div>
+        <div class="form-group">
+            <label>Logo do Cliente</label>
+            <input type="file" id="in-logo-cli" accept="image/*">
+        </div>
+    </div>
+    
+    <div class="form-row">
+        <div class="form-group"><label>Nº do Orçamento</label><input type="text" id="in-os" value="2026-001" oninput="update()"></div>
+        <div class="form-group"><label>Data de Emissão</label><input type="date" id="in-data" onchange="update()"></div>
+    </div>
+
+    <h3>Dados do Laboratório</h3>
+    <div class="form-group" style="margin-bottom: 8px;">
+        <label>Razão Social</label>
+        <input type="text" id="in-rem-empresa" value="Advanced Labs Ensaios e Serviços Especializados Ltda" oninput="update()">
+    </div>
+    <div class="form-row">
+        <div class="form-group"><label>CNPJ</label><input type="text" id="in-rem-cnpj" value="58.291.244/0001-50" oninput="update()"></div>
+        <div class="form-group"><label>Telefone</label><input type="text" id="in-rem-tel" value="(48) 99655-5261" oninput="update()"></div>
+    </div>
+    <div class="form-group" style="margin-bottom: 8px;">
+        <label>Endereço</label>
+        <input type="text" id="in-rem-end" value="ROD PADRE HERVAL FONTANELLA, 11634, DISTRITO INDUSTRIAL, SIDERÓPOLIS, SC" oninput="update()">
+    </div>
+    <div class="form-row">
+        <div class="form-group"><label>Seu Nome</label><input type="text" id="in-rem-nome" value="Tiago Lourenço" oninput="update()"></div>
+        <div class="form-group"><label>Seu Cargo</label><input type="text" id="in-rem-cargo" value="Gerente Técnico" oninput="update()"></div>
+    </div>
+
+    <h3>Empresa Solicitante</h3>
+    <div class="form-row">
+        <div class="form-group"><label>Razão Social / Nome</label><input type="text" id="in-cli-empresa" placeholder="Ex: Zopone Engenharia" oninput="update()"></div>
+        <div class="form-group"><label>CNPJ</label><input type="text" id="in-cli-cnpj" placeholder="00.000.000/0001-00" oninput="update()"></div>
+    </div>
+    <div class="form-group" style="margin-bottom: 8px;">
+        <label>Endereço</label>
+        <input type="text" id="in-cli-end" placeholder="Rua, Número, Bairro, Cidade - UF" oninput="update()">
+    </div>
+    <div class="form-row">
+        <div class="form-group"><label>A/C (Contato)</label><input type="text" id="in-cli-nome" placeholder="Nome do Contato" oninput="update()"></div>
+        <div class="form-group"><label>Telefone</label><input type="text" id="in-cli-tel" placeholder="(00) 0000-0000" oninput="update()"></div>
+    </div>
+    <div class="form-row">
+        <div class="form-group"><label>E-mail do Cliente</label><input type="text" id="in-cli-email" placeholder="email@empresa.com" oninput="update()"></div>
+    </div>
+
+    <h3>Ensaios e Serviços</h3>
+    <div id="lista-ensaios"></div>
+    
+    <button class="btn btn-add" onclick="adicionarEnsaio()">+ Adicionar Ensaio Personalizado</button>
+
+    <h3>Condições e Pagamento</h3>
+    <div class="form-row">
+        <div class="form-group"><label>Prazo de Pagamento</label><input type="text" id="in-cond-prazo" value="30/60/90 Dias" oninput="update()"></div>
+        <div class="form-group"><label>Forma</label><input type="text" id="in-cond-forma" value="Boleto / PIX" oninput="update()"></div>
+    </div>
+    <div class="form-group" style="margin-bottom: 8px;">
+        <label>Dados Bancários / PIX</label>
+        <input type="text" id="in-cond-banco" placeholder="Banco X - Ag: 0000 CC: 00000-0 | PIX" oninput="update()">
+    </div>
+    <div class="form-group">
+        <label>Desconto Total (%)</label>
+        <input type="number" id="in-desconto" value="0" min="0" max="100" step="0.1" oninput="update()">
+    </div>
+
+    <button class="btn btn-print" onclick="window.print()">🖨️ Gerar PDF / Imprimir</button>
+</div>
+
+<div class="preview-container">
+    <div class="a4-sheet">
+        
+        <div class="doc-header">
+            <div class="doc-logo">
+                <img id="out-logo-lab" src="https://via.placeholder.com/160x50?text=Logo+Laborat%C3%B3rio" alt="Logo Laboratório">
+            </div>
+            <div class="doc-meta">
+                <strong style="font-size: 12pt; color: var(--primary);">PROPOSTA COMERCIAL Nº <span id="out-os"></span></strong><br>
+                Data de Emissão: <span id="out-data"></span>
+            </div>
+            <div class="doc-logo right">
+                <img id="out-logo-cli" src="" alt="Logo Cliente" style="display: none;">
+            </div>
+        </div>
+
+        <table>
+            <thead><tr><th style="width: 50%;">Destinatário (Solicitante)</th><th style="width: 50%;">Remetente (Laboratório)</th></tr></thead>
+            <tbody>
+                <tr>
+                    <td>
+                        <strong>Empresa:</strong> <span id="out-cli-empresa"></span><br>
+                        <strong>CNPJ:</strong> <span id="out-cli-cnpj"></span><br>
+                        <strong>Endereço:</strong> <span id="out-cli-end"></span><br>
+                        <strong>A/C:</strong> <span id="out-cli-nome"></span><br>
+                        <strong>Telefone:</strong> <span id="out-cli-tel"></span><br>
+                        <strong>E-mail:</strong> <span id="out-cli-email"></span>
+                    </td>
+                    <td>
+                        <strong>Laboratório:</strong> <span id="out-rem-empresa"></span><br>
+                        <strong>CNPJ:</strong> <span id="out-rem-cnpj"></span><br>
+                        <strong>Endereço:</strong> <span id="out-rem-end"></span><br>
+                        <strong>Responsável:</strong> <span id="out-rem-nome"></span> (<span id="out-rem-cargo"></span>)<br>
+                        <strong>Telefone:</strong> <span id="out-rem-tel"></span><br>
+                        <strong>Norma Aplicada:</strong> Portaria Inmetro nº 62/2022
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="section-title">1. OBJETO E DESCRIÇÃO DOS ENSAIOS</div>
+        <div class="term-text">Avaliação da Conformidade em Luminárias para Iluminação Pública Viária com Tecnologia LED, conforme Portaria INMETRO Nº 62 de 17 de fevereiro de 2022 e Critérios Selo Procel.</div>
+        
+        <table>
+            <thead>
+                <tr>
+                    <th style="width: 12%;">Item RTQ</th>
+                    <th style="width: 15%;">Família/Modelo</th>
+                    <th style="width: 5%;" class="text-center">Qtd</th>
+                    <th style="width: 38%;">Serviços / Ensaios Normativos</th>
+                    <th style="width: 15%;" class="text-right">V. Unit. (R$)</th>
+                    <th style="width: 15%;" class="text-right">Subtotal (R$)</th>
+                </tr>
+            </thead>
+            <tbody id="out-tabela-ensaios">
+                </tbody>
+            <tfoot>
+                <tr>
+                    <th colspan="5" class="text-right">TOTAL BRUTO:</th>
+                    <th id="out-total-bruto" class="text-right">R$ 0,00</th>
+                </tr>
+                <tr>
+                    <th colspan="5" class="text-right" style="color: darkred;" id="lbl-desconto">DESCONTO (0%):</th>
+                    <th id="out-total-desconto" class="text-right" style="color: darkred;">- R$ 0,00</th>
+                </tr>
+                <tr>
+                    <th colspan="5" class="text-right">VALOR TOTAL A PAGAR:</th>
+                    <th id="out-total-liquido" class="text-right" style="font-size: 10pt;">R$ 0,00</th>
+                </tr>
+            </tfoot>
+        </table>
+        <div class="term-text" style="margin-top:-8px; font-style: italic;">* Os valores acima referem-se a cada amostra/modelo entregue. Impostos previstos já inclusos.</div>
+
+        <div class="section-title">2. CONDIÇÕES DE PAGAMENTO E FATURAMENTO</div>
+        <table>
+            <thead>
+                <tr>
+                    <th class="text-center">Valor Total (R$)</th>
+                    <th class="text-center">Prazo de Pagamento</th>
+                    <th class="text-center">Forma de Pagamento</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td id="out-cond-valor" class="text-center" style="font-weight: bold;">R$ 0,00</td>
+                    <td id="out-cond-prazo" class="text-center"></td>
+                    <td id="out-cond-forma" class="text-center"></td>
+                </tr>
+                <tr>
+                    <td colspan="3" style="background: #f9f9f9;"><strong>Dados Bancários / PIX:</strong> <span id="out-cond-banco"></span></td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="section-title">3. PRAZOS, VALIDADE E CONDIÇÕES GERAIS</div>
+        <div class="term-text">• <strong>Prazos de Pagamento:</strong> Começam a contar da data de entrega do relatório de Ensaio. Caso haja mais de um relatório, considera-se a data do primeiro enviado.</div>
+        <div class="term-text">• <strong>Cancelamento:</strong> Havendo cancelamento após o início, os valores relativos aos ensaios já realizados deverão ser quitados pelo cliente.</div>
+        <div class="term-text">• <strong>Prazo de Execução:</strong> Estimado em 15 dias úteis a partir do recebimento das amostras físicas adequadas e do aceite desta proposta.</div>
+        <div class="term-text">• <strong>Validade da Proposta:</strong> 20 dias úteis após a data de sua emissão.</div>
+        <div class="term-text">• <strong>Retenção de Amostras:</strong> As amostras ensaiadas serão mantidas por 60 dias após a finalização. A partir da retirada ou descarte, esgota-se a possibilidade de contestação ou repetição dos ensaios.</div>
+
+        <div style="margin-top: 40px; display: flex; justify-content: space-around; text-align: center;">
+            <div style="width: 40%; border-top: 1px solid #000; padding-top: 5px;">
+                <strong id="out-ass-rem"></strong><br>
+                <span id="out-ass-cargo"></span><br>
+                <span id="out-ass-empresa" style="font-size: 8pt;"></span>
+            </div>
+            <div style="width: 40%; border-top: 1px solid #000; padding-top: 5px;">
+                <strong>De Acordo (Cliente)</strong><br>
+                Assinatura, Data e Carimbo
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script>
+    // Banco de dados com o mapeamento exato dos itens do RTQ da Portaria
+    let baseEnsaios = [
+        { cat: 'Segurança (Tabela 3)', id: 1, rtq: '5, 4.1.1, 4.1.2', nome: "Marcação, Condições de operação e Acondicionamento", qtd: 1, valor: 400, checked: false, custom: false },
+        { cat: 'Segurança (Tabela 3)', id: 2, rtq: '4.1.9', nome: "Interferência eletromagnética e radiofrequência", qtd: 1, valor: 800, checked: false, custom: false },
+        { cat: 'Segurança (Tabela 3)', id: 3, rtq: '4.1.8', nome: "Proteção contra choque-elétrico", qtd: 1, valor: 400, checked: false, custom: false },
+        { cat: 'Segurança (Tabela 3)', id: 4, rtq: '4.1.11', nome: "Resistência ao torque dos parafusos e conexões", qtd: 1, valor: 400, checked: false, custom: false },
+        { cat: 'Segurança (Tabela 3)', id: 5, rtq: '4.1.3', nome: "Fiação interna e externa", qtd: 1, valor: 400, checked: false, custom: false },
+        { cat: 'Segurança (Tabela 3)', id: 6, rtq: '4.1.4', nome: "Tomada para relé fotoelétrico (quando aplicável)", qtd: 1, valor: 1200, checked: false, custom: false },
+        { cat: 'Segurança (Tabela 3)', id: 7, rtq: '4.1.5', nome: "Grau de proteção", qtd: 1, valor: 900, checked: false, custom: false },
+        { cat: 'Segurança (Tabela 3)', id: 8, rtq: '4.1.6, 4.1.7', nome: "Rigidez dielétrica, Resistência de isolamento e Corrente de fuga", qtd: 1, valor: 800, checked: false, custom: false },
+        { cat: 'Segurança (Tabela 3)', id: 9, rtq: '4.1.12', nome: "Resistência à força do vento", qtd: 1, valor: 500, checked: false, custom: false },
+        { cat: 'Segurança (Tabela 3)', id: 10, rtq: '4.1.13', nome: "Resistência à vibração", qtd: 1, valor: 500, checked: false, custom: false },
+        { cat: 'Segurança (Tabela 3)', id: 11, rtq: '4.1.10', nome: "Proteção contra impactos mecânicos externos", qtd: 1, valor: 500, checked: false, custom: false },
+        { cat: 'Segurança (Tabela 3)', id: 12, rtq: '4.2.12', nome: "Resistência à radiação ultravioleta para lentes e refratores em polímero (UV)", qtd: 1, valor: 1500, checked: false, custom: false },
+        { cat: 'Eficiência Energética (Tabela 4)', id: 13, rtq: '4.2.1, 4.2.2, 4.2.4, 4.2.5', nome: "Potência, Fator de Potência, Corrente de alimentação, Limite de Harmônicas e Eficiência Energética", qtd: 3, valor: 500, checked: false, custom: false },
+        { cat: 'Eficiência Energética (Tabela 4)', id: 14, rtq: '4.2.6, 4.2.7, 4.2.10, 4.2.11', nome: "Temperatura de cor correlata (TCC), Índice de reprodução de cor (IRC), Classificação da distribuição e CDL", qtd: 3, valor: 600, checked: false, custom: false },
+        { cat: 'Eficiência Energética (Tabela 4)', id: 15, rtq: '4.2.3', nome: "Tensão e corrente de saída", qtd: 3, valor: 400, checked: false, custom: false },
+        { cat: 'Eficiência Energética (Tabela 4)', id: 16, rtq: '4.2.8', nome: "Manutenção do fluxo luminoso da luminária", qtd: 1, valor: 600, checked: false, custom: false },
+        { cat: 'Eficiência Energética (Tabela 4)', id: 17, rtq: '4.2.9', nome: "Durabilidade do dispositivo de controle incorporado", qtd: 1, valor: 600, checked: false, custom: false }
+    ];
+
+    // Inicialização da Página
+    function init() {
+        document.getElementById('in-data').valueAsDate = new Date();
+        renderizarEnsaios();
+
+        document.getElementById('in-logo-lab').addEventListener('change', function(e) {
+            const reader = new FileReader();
+            reader.onload = function() { document.getElementById('out-logo-lab').src = reader.result; }
+            if(e.target.files[0]) reader.readAsDataURL(e.target.files[0]);
+        });
+
+        document.getElementById('in-logo-cli').addEventListener('change', function(e) {
+            const reader = new FileReader();
+            reader.onload = function() { 
+                const img = document.getElementById('out-logo-cli');
+                img.src = reader.result; 
+                img.style.display = 'inline-block';
+            }
+            if(e.target.files[0]) reader.readAsDataURL(e.target.files[0]);
+        });
+    }
+
+    // Desenha a lista de ensaios na barra lateral
+    function renderizarEnsaios() {
+        const container = document.getElementById('lista-ensaios');
+        container.innerHTML = '';
+        let currentCat = '';
+        
+        baseEnsaios.forEach((ensaio) => {
+            if (ensaio.cat !== currentCat) {
+                currentCat = ensaio.cat;
+                const catTitle = document.createElement('div');
+                catTitle.className = 'ensaio-group-title';
+                catTitle.innerText = currentCat;
+                container.appendChild(catTitle);
+            }
+
+            const labelHtml = ensaio.custom 
+                ? `<input type="text" class="custom-name" id="nome-${ensaio.id}" value="${ensaio.nome}" placeholder="Nome do Serviço" oninput="autoCheck(${ensaio.id}); update()">`
+                : `<label for="chk-${ensaio.id}">${ensaio.nome}</label>`;
+
+            const removeBtn = ensaio.custom 
+                ? `<button class="btn-remove" onclick="removerEnsaio(${ensaio.id})">Remover</button>`
+                : '';
+
+            const rtqInput = ensaio.custom 
+                ? `<input type="text" id="rtq-${ensaio.id}" placeholder="Item RTQ" value="${ensaio.rtq || ''}" oninput="autoCheck(${ensaio.id}); update()">` 
+                : '';
+
+            const gridStyle = ensaio.custom 
+                ? 'grid-template-columns: 1fr 1.5fr 0.8fr 1.2fr;' 
+                : 'grid-template-columns: 2fr 1fr 1.5fr;';
+
+            const html = `
+                <div class="ensaio-item ${ensaio.checked ? 'checked' : ''}" id="item-${ensaio.id}">
+                    <div class="ensaio-header">
+                        <input type="checkbox" id="chk-${ensaio.id}" ${ensaio.checked ? 'checked' : ''} onchange="update()">
+                        ${labelHtml}
+                        ${removeBtn}
+                    </div>
+                    <div class="ensaio-inputs" style="${gridStyle}">
+                        ${rtqInput}
+                        <input type="text" id="fam-${ensaio.id}" placeholder="Família/Modelo" value="${ensaio.fam || ''}" oninput="autoCheck(${ensaio.id}); update()">
+                        <input type="number" id="qtd-${ensaio.id}" placeholder="Qtd" value="${ensaio.qtd}" min="1" oninput="autoCheck(${ensaio.id}); update()">
+                        <input type="number" id="val-${ensaio.id}" placeholder="R$ Unit" value="${ensaio.valor}" min="0" oninput="autoCheck(${ensaio.id}); update()">
+                    </div>
+                </div>
+            `;
+            container.insertAdjacentHTML('beforeend', html);
+        });
+
+        update();
+    }
+
+    function autoCheck(id) {
+        const checkbox = document.getElementById(`chk-${id}`);
+        if (checkbox && !checkbox.checked) {
+            checkbox.checked = true;
+        }
+    }
+
+    function salvarEstado() {
+        baseEnsaios.forEach(e => {
+            const chk = document.getElementById(`chk-${e.id}`);
+            const rtq = document.getElementById(`rtq-${e.id}`);
+            const fam = document.getElementById(`fam-${e.id}`);
+            const qtd = document.getElementById(`qtd-${e.id}`);
+            const val = document.getElementById(`val-${e.id}`);
+            const nome = document.getElementById(`nome-${e.id}`); 
+
+            if(chk) e.checked = chk.checked;
+            if(rtq) e.rtq = rtq.value;
+            if(fam) e.fam = fam.value;
+            if(qtd) e.qtd = qtd.value;
+            if(val) e.valor = val.value;
+            if(nome) e.nome = nome.value;
+        });
+    }
+
+    function adicionarEnsaio() {
+        salvarEstado();
+        baseEnsaios.push({
+            cat: 'Serviços Personalizados',
+            id: Date.now(), 
+            rtq: "",
+            nome: "",
+            fam: "",
+            qtd: 1,
+            valor: 0,
+            checked: true,
+            custom: true
+        });
+        renderizarEnsaios();
+    }
+
+    function removerEnsaio(id) {
+        salvarEstado();
+        baseEnsaios = baseEnsaios.filter(e => e.id !== id);
+        renderizarEnsaios();
+    }
+
+    function formatR(valor) {
+        return parseFloat(valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    }
+
+    function update() {
+        const idsTextos = ['os', 'rem-empresa', 'rem-cnpj', 'rem-tel', 'rem-end', 'rem-nome', 'rem-cargo', 'cli-empresa', 'cli-cnpj', 'cli-tel', 'cli-end', 'cli-nome', 'cli-email', 'cond-prazo', 'cond-forma', 'cond-banco'];
+        idsTextos.forEach(id => {
+            const el = document.getElementById(`out-${id}`);
+            if(el) el.innerText = document.getElementById(`in-${id}`).value || '-';
+        });
+
+        document.getElementById('out-ass-rem').innerText = document.getElementById('in-rem-nome').value || 'Responsável Técnico';
+        document.getElementById('out-ass-cargo').innerText = document.getElementById('in-rem-cargo').value || 'Cargo';
+        document.getElementById('out-ass-empresa').innerText = document.getElementById('in-rem-empresa').value || 'Laboratório';
+
+        const rawDate = document.getElementById('in-data').value;
+        document.getElementById('out-data').innerText = rawDate ? new Date(rawDate).toLocaleDateString('pt-BR') : '-';
+
+        const tbody = document.getElementById('out-tabela-ensaios');
+        tbody.innerHTML = '';
+        let totalBruto = 0;
+
+        baseEnsaios.forEach(e => {
+            const chk = document.getElementById(`chk-${e.id}`);
+            const itemDiv = document.getElementById(`item-${e.id}`);
+
+            if (chk && chk.checked && itemDiv) {
+                itemDiv.classList.add('checked');
+            } else if (itemDiv) {
+                itemDiv.classList.remove('checked');
+            }
+
+            if(chk && chk.checked) {
+                const inputRtq = document.getElementById(`rtq-${e.id}`);
+                const rtqVal = inputRtq ? (inputRtq.value || '-') : (e.rtq || '-');
+                
+                const famText = document.getElementById(`fam-${e.id}`).value || '-';
+                const qtdVal = parseFloat(document.getElementById(`qtd-${e.id}`).value) || 0;
+                const rUnitVal = parseFloat(document.getElementById(`val-${e.id}`).value) || 0;
+                
+                const inputNome = document.getElementById(`nome-${e.id}`);
+                const nomeFinal = inputNome ? (inputNome.value || 'Serviço Personalizado') : e.nome;
+
+                const sub = qtdVal * rUnitVal;
+                totalBruto += sub;
+
+                tbody.insertAdjacentHTML('beforeend', `
+                    <tr>
+                        <td style="font-size: 8pt;" class="text-center"><strong>${rtqVal}</strong></td>
+                        <td style="font-size: 8pt;">${famText}</td>
+                        <td class="text-center">${qtdVal}</td>
+                        <td style="font-size: 8pt;">${nomeFinal}</td>
+                        <td class="text-right">${formatR(rUnitVal)}</td>
+                        <td class="text-right"><strong>${formatR(sub)}</strong></td>
+                    </tr>
+                `);
+            }
+        });
+
+        if(totalBruto === 0) {
+            tbody.innerHTML = `<tr><td colspan="6" class="text-center" style="color:#666;">Nenhum ensaio selecionado.</td></tr>`;
+        }
+
+        const descPercent = parseFloat(document.getElementById('in-desconto').value) || 0;
+        const descValor = totalBruto * (descPercent / 100);
+        const liquido = totalBruto - descValor;
+
+        document.getElementById('lbl-desconto').innerText = `DESCONTO (${descPercent}%):`;
+        document.getElementById('out-total-bruto').innerText = formatR(totalBruto);
+        document.getElementById('out-total-desconto').innerText = "- " + formatR(descValor);
+        document.getElementById('out-total-liquido').innerText = formatR(liquido);
+        document.getElementById('out-cond-valor').innerText = formatR(liquido);
+    }
+
+    window.onload = init;
+</script>
+
+</body>
+</html>
